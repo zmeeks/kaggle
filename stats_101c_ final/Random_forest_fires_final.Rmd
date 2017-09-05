@@ -1,0 +1,81 @@
+---
+title: "Stats 101C Final"
+author: "Zack Meeks (XXXXXX115) & Kaylin Dee (XXXXXX248)"
+date: "6/15/2017"
+output: pdf_document
+---
+
+Note: will need to add local file paths into read.csv and write.csv functions below
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("enter_applicable_file_path_here/lafd")
+kaggle_data <- read.csv("enter_applicable_file_path_here/kaggle")
+ 
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+ 
+lafd_sub_2 <- lafd_sub
+lafd_sub_2[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub_2[,4] <- as.character(lafd_sub[,4])
+ 
+lafd_sub_3 <- lafd_sub[which(lafd$Dispatch.Sequence < 157), ]
+ 
+s <- length(lafd_sub$elapsed_time)
+s
+ 
+#	this chunk for running 70/30 validation
+#train <- sample(c(1:s),s*.70, replace = FALSE)
+#lafd_xgb_train0 <- lafd_sub[train,]
+#lafd_xgb_test <- lafd_sub[-train,]
+#lafd_xgb_train <- lafd_xgb_train0[which(lafd_xgb_train0$elapsed_time < 79250), ]
+#train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+#test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+#labels <- lafd_xgb_train$elapsed_time
+ 
+lafd_xgb_full <- lafd_sub_3[which(lafd_sub_3$elapsed_time < 79250), ]
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_full)
+labels_f <- lafd_xgb_full$elapsed_time
+ 
+xgb <- xgboost(data = full_matrix, 
+ label = labels_f, 
+ eta = 0.0173,
+ gamma = 1.43,
+ max_depth = 3, 
+ nround=307, 
+ subsample = 0.5115,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+ 
+#xgb.pred <- predict(xgb, test_matrix)
+#xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+#xgb.mse
+ 
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+ 
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+ 
+kag_pred <- predict(xgb, kag_matrix)
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+full_rows <- kaggle_data[,1]
+missing_rows <- setdiff(full_rows, kag_rows)
+avg_pred <- mean(kag_pred)
+ss <- length(missing_rows)
+pred_rep <- rep(avg_pred, ss)
+kag_xx <- cbind(missing_rows, pred_rep)
+prediction <- kag_pred 
+row.id <- kag_rows 
+kag_x0 <- cbind(row.id, prediction)
+kag_xgb_mod3x <- rbind(kag_x0, kag_xx)
+ 
+write.csv(kag_xgb_mod3x, file = "enter_valid_file_path_here.csv", row.names = FALSE, quote=FALSE)
+
+```
+note: will need to manually convert 3e5 into 300000 and 3e6 into 3000000 in the resulting .csv file
+

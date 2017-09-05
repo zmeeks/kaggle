@@ -1,0 +1,1074 @@
+---
+title: "kaggle_final_101c"
+author: "Zack Meeks (#XXXXXX115)"
+date: "6/6/2017"
+output: pdf_document
+---
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,10,11)]),c(6,7,10,11)])
+min <- min(as.numeric(lafd_sub[,3]))
+max <- max(as.numeric(lafd_sub[,3]))
+lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+for(i in 1:s){
+
+  if(as.numeric(lafd_sub[i,1]) < 11)
+    lafd_sub[i,1] <- as.character(lafd_sub[i,1])
+  else if (as.numeric(lafd_sub[i,1]) < 26)
+    lafd_sub[i,1] <- "20"
+  else if (as.numeric(lafd_sub[i,1]) < 51)
+    lafd_sub[i,1] <- "30"
+  else
+    lafd_sub[i,1] <- "40"
+  
+  if(as.numeric(lafd_sub[i,1]) > 30){
+    print(i)
+    print(lafd_sub[i,1])
+  }
+}
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.0175,
+ gamma = 0.2,
+ max_depth = 25, 
+ nround=175, 
+ subsample = 0.40,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+
+```
+
+```{r}
+
+library(neuralnet)
+
+set.seed(13407)
+
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub.nn <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+lafd_sub.nn[,4] <- as.numeric(lafd_sub[,4])
+s <- length(lafd_sub.nn$elapsed_time)
+s
+
+train <- sample(c(1:2315071),2315071*.7, replace = FALSE)
+lafd_nn_train <- lafd_sub[train,]
+lafd_nn_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(~ .-1, data = lafd_nn_train)
+test_matrix <- sparse.model.matrix(~ .-1, data = lafd_nn_test)
+
+train_df <- as.data.frame(as.matrix(train_matrix))
+
+n <- names(train_df)
+nx <- gsub("-", "_", n)
+nx <- gsub(" ", "", nx)
+nx <- gsub('\\(', "_", nx)
+nx <- gsub(")", "", nx)
+f <- as.formula(paste("elapsed_time ~", paste(nx[!nx %in% "elapsed_time"], collapse = " + ")))
+names(train_df) <- nx
+nn <- neuralnet(f,data=train_df,hidden=c(15,6),linear.output=T)
+
+
+
+```
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.0170,
+ gamma = 4.5,
+ max_depth = 3, 
+ nround=550, 
+ subsample = 0.425,
+ colsample_bytree = 0.5,
+ min_child_weight = 1.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod2 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod2, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2.txt", row.names = FALSE, quote=FALSE)
+  
+```
+1422927
+--1408873.67232
+
+#when run with 700 and stub of depth 2, first time got 1500414 as score
+
+```{r}
+kag_xgb_mod2.s <- kag_xgb_mod2[sort.list(kag_xgb_mod2[,1]),]
+
+kag_mod_alpha <- read.csv("/Users/z/Desktop/stats_101c/kaggle/kaggle_mod4c.csv")
+
+kag_mod_alpha.s <- kag_mod_alpha[sort.list(kag_mod_alpha[,1]),]
+
+prediction <- (1.4*kag_xgb_mod2.s[,2] + 0.8*kag_mod_alpha.s[,2])/2.20
+row.id <- kag_mod_alpha.s[,1]
+
+kag_tripple_ensemble <- cbind(row.id, prediction)
+
+write.csv(kag_tripple_ensemble, file = "/Users/z/Desktop/stats_101c/kaggle/kag_ensemble_3xa.txt", row.names = FALSE, quote=FALSE)
+
+```
+--1406508.13869
+
+```{r}
+
+library(xgboost)
+library(randomForest)
+set.seed(143077)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.017,
+ gamma = 0.275,
+ max_depth = 4, 
+ nround=125, 
+ subsample = 0.33,
+ colsample_bytree = 0.5,
+ seed = 177,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod2 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod2, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_sub)
+
+labels <- lafd_sub$elapsed_time
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.0173,  #was 0.0173 prior
+ gamma = 0.9, #was 0.2
+ max_depth = 3, 
+ nround=215, 
+ subsample = 0.425,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod2 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod2, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2xl.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.0173,
+ gamma = 0.2,
+ max_depth = 3, 
+ nround=180, 
+ subsample = 0.425,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod2 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod2, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+
+
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+lafd_sub_2 <- lafd_sub
+lafd_sub_2[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub_2[,4] <- as.character(lafd_sub[,4])
+
+lafd_sub_3 <- lafd_sub[which(lafd$Dispatch.Sequence < 157), ]
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.71, replace = FALSE)
+lafd_xgb_train0 <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+lafd_xgb_train <- lafd_xgb_train0[which(lafd_xgb_train0$elapsed_time < 79250), ]
+
+lafd_xgb_full <- lafd_sub_3[which(lafd_sub_3$elapsed_time < 79250), ]
+
+#lafd_xgb_high_data <- setdiff(lafd_xgb_train0, lafd_xgb_train)
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_full)
+
+labels <- lafd_xgb_train$elapsed_time
+
+labels_f <- lafd_xgb_full$elapsed_time
+
+xgb <- xgboost(data = full_matrix, 
+ label = labels_f, 
+ eta = 0.0173,
+ gamma = 1.43,
+ max_depth = 3, 
+ nround=307, 
+ subsample = 0.5115,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod3 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod3, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod3qq.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+
+```{r}
+kag_x0.s <- kag_x0[sort.list(kag_x0[,1]),]
+
+kag_thing <- kaggle_data[kaggle_data$row.id %in% kag_rows,c(1,6,7,8,10)]
+
+kd.s <- kaggle_data[sort.list(kaggle_data[,1]),]
+
+kd_update <- cbind(kag_thing, prediction)
+
+na_rep <-  rep('NA', ss)
+
+kag_mis <- kaggle_data[kaggle_data$row.id %in% missing_rows,c(1,6,7,8,10)]
+
+kag_na <- cbind(kag_mis, na_rep)
+
+kag_knn_me <- rbindlist(list(kd_update, kag_na), use.names = FALSE, fill = FALSE, idcol = TRUE)
+
+kd_new_vimd <- kNN(data = as.data.frame(kag_knn_me), variable = "prediction", impNA = TRUE, k = 9) 
+
+xkcd <- kNN(kaggle_data, k=5)
+
+
+
+```
+
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(3,6,7,8,10,11)]),c(3,6,7,8,10,11)])
+
+
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+lafd_sub_2 <- lafd_sub
+lafd_sub_2[,5] <- floor(as.numeric(lafd_sub[,5])/4800)
+lafd_sub_2[,5] <- as.character(lafd_sub[,5])
+lafd_sub_2[,1] <- as.character(lafd_sub[,1])
+
+lafd_sub_3 <- lafd_sub[which(lafd$Dispatch.Sequence < 157), ]
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.71, replace = FALSE)
+lafd_xgb_train0 <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+lafd_xgb_train <- lafd_xgb_train0[which(lafd_xgb_train0$elapsed_time < 79250), ]
+
+lafd_xgb_full <- lafd_sub_3[which(lafd_sub_3$elapsed_time < 79250), ]
+
+#lafd_xgb_high_data <- setdiff(lafd_xgb_train0, lafd_xgb_train)
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_full)
+
+labels <- lafd_xgb_train$elapsed_time
+
+labels_f <- lafd_xgb_full$elapsed_time
+
+xgb <- xgboost(data = full_matrix, 
+ label = labels_f, 
+ eta = 0.0067,
+ gamma = 1.43,
+ max_depth = 3, 
+ nround=5000, 
+ early_stopping_rounds = 3,
+ subsample = 0.5,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 3
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(3,6,7,8,10)]
+kag_sub[,5] <- floor(as.numeric(kag_sub[,5])/4800)
+kag_sub[,5] <- as.character(kag_sub[,5])  
+kag_sub[,1] <- as.character(kag_sub[,1])
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod4 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod4, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod4.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+```{r}
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+
+
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+lafd_sub_2 <- lafd_sub
+lafd_sub_2[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub_2[,4] <- as.character(lafd_sub[,4])
+
+lafd_sub_3 <- lafd_sub_2[which(lafd$Dispatch.Sequence < 157), ]
+
+s <- length(lafd_sub_3$Dispatch.Sequence)
+train <- sample(1:s, s*.7, replace = FALSE)
+
+lafd_ols_train <- lafd_sub_3[train,]
+lafd_ols_test <- lafd_sub_3[-train,]
+
+ols <- lm(elapsed_time ~ poly(Dispatch.Sequence, degree =3, raw = TRUE) + Dispatch.Status + Incident.Creation.Time..GMT. + Unit.Type, data = lafd_ols_train)
+ols_pred <- predict(ols, lafd_ols_test)
+
+ols_mse <-  mean((ols_pred - lafd_ols_test$elapsed_time)^2)
+ols_mse
+
+
+```
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,11)]),c(6,7,8,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/3600)
+lafd_sub[which(lafd_sub[,4] != 9),4] <- 0
+lafd_sub[which(lafd_sub[,4] == 9),4] <- 1
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+lafd_sub <- na.omit(lafd_sub[complete.cases(lafd_sub[,]),])
+
+#lafd_sub <- lafd_sub[which(lafd_sub$elapsed_time < 82050), ]
+lafd_sub <- lafd_sub[which(lafd_sub$Dispatch.Sequence < 199), ]
+
+
+
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_sub)
+
+labels <- lafd_xgb_train$elapsed_time
+label_f <- lafd_sub$elapsed_time
+
+                                      #test mse was 1411149 with commented out secs
+
+xgb <- xgboost(data = full_matrix, 
+ label = label_f, 
+ eta = 0.015,  #was 0.015
+ gamma = 0.9, #0.9
+ max_depth = 3, 
+ nround=150, #was 250
+ subsample = 0.425,  #was 0.415 
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 3
+)
+
+#xgb.pred <- predict(xgb, test_matrix)
+
+#xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+#xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/3600)
+kag_sub[which(kag_sub[,4] != 9),4] <- 0
+kag_sub[which(kag_sub[,4] == 9),4] <- 1
+kag_sub[,4] <- as.character(kag_sub[,4])
+kag_sub <- na.omit(kag_sub[complete.cases(lafd_sub[,]),])
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_xkcd1 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_xkcd1, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_xkcd1.txt", row.names = FALSE, quote=FALSE)
+  
+```
+1376053 !!!
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,9,10,11)]),c(6,7,9,10,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/3600)
+lafd_sub[which(lafd[,4] != 9),4] <- 0
+lafd_sub[which(lafd[,4] == 9),4] <- 1
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+lafd_sub <- na.omit(lafd_sub[complete.cases(lafd_sub[,]),])
+
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_sub)
+
+labels <- lafd_xgb_train$elapsed_time
+
+                                      #test mse was 1411149 with commented out secs
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.015,  #was 0.015
+ gamma = 0.9, #0.9
+ max_depth = 3, 
+ nround=250, #was 250
+ subsample = 0.415,  #was 0.415 
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 3
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_final <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_final, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_final.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+
+```{r}
+library(xgboost)
+library(randomForest)
+set.seed(14307)
+lafd <- read.csv("/Users/z/Desktop/stats_101c/kaggle/lafdtraining.csv")
+kaggle_data <- read.csv("/Users/z/Desktop/stats_101c/kaggle/testing.without.response")
+
+lafd_sub <- na.omit(lafd[complete.cases(lafd[,c(6,7,8,10,9,11)]),c(6,7,8,10,9,11)])
+#min <- min(as.numeric(lafd_sub[,3]))
+#max <- max(as.numeric(lafd_sub[,3]))
+#lafd_sub[,3] <- (as.numeric(lafd_sub[,3]) - min)/(max - min)
+#lafd_sub[,3] <- floor(as.numeric(lafd_sub[,3])/3600)
+
+#lafd_sub[,3] <- as.character(lafd_sub[,3])
+
+#lafd_sub[,3] <- as.numeric(lafd_sub[,3])
+
+lafd_sub[,4] <- floor(as.numeric(lafd_sub[,4])/4800)
+lafd_sub[,4] <- as.character(lafd_sub[,4])
+
+s <- length(lafd_sub$elapsed_time)
+s
+
+#min1 <- min(as.numeric(lafd_sub[,1]))
+#max1 <- max(as.numeric(lafd_sub[,1]))
+
+#lafd_sub[,1] <- (as.numeric(lafd_sub[,1]) - min1)/(max1 - min1)
+
+
+train <- sample(c(1:s),s*.7, replace = FALSE)
+lafd_xgb_train <- lafd_sub[train,]
+lafd_xgb_test <- lafd_sub[-train,]
+
+train_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_train)
+test_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_xgb_test)
+
+# full_matrix <- sparse.model.matrix(elapsed_time ~ .-1, data = lafd_sub)
+
+labels <- lafd_sub$elapsed_time
+labels <- lafd_xgb_train$elapsed_time
+
+xgb <- xgboost(data = train_matrix, 
+ label = labels, 
+ eta = 0.015,  #was 0.0173 prior
+ gamma = 0.9, #was 0.2
+ max_depth = 3, 
+ nround=225, 
+ subsample = 0.415,
+ colsample_bytree = 0.5,
+ seed = 17,
+ eval_metric = "rmse",
+ nthread = 2
+)
+
+xgb.pred <- predict(xgb, test_matrix)
+
+xgb.mse <- mean((xgb.pred - lafd_xgb_test$elapsed_time)^2)
+xgb.mse
+
+kag_sub <- kaggle_data[,c(6,7,8,10)]
+kag_sub[,4] <- floor(as.numeric(kag_sub[,4])/4800)
+kag_sub[,4] <- as.character(kag_sub[,4])  
+
+kag_matrix <- sparse.model.matrix(~ .-1, data = kag_sub)
+
+kag_pred <- predict(xgb, kag_matrix)
+
+kag_rows <- na.omit(kaggle_data[complete.cases(kaggle_data[,c(6,7,8,10)]),1])
+
+full_rows <- kaggle_data[,1]
+
+missing_rows <- setdiff(full_rows, kag_rows)
+
+avg_pred <- mean(kag_pred)
+
+ss <- length(missing_rows)
+
+pred_rep <- rep(avg_pred, ss)
+
+kag_xx <- cbind(missing_rows, pred_rep)
+
+prediction <- kag_pred 
+row.id <- kag_rows 
+
+kag_x0 <- cbind(row.id, prediction)
+
+kag_xgb_mod2 <- rbind(kag_x0, kag_xx)
+
+write.csv(kag_xgb_mod2, file = "/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2xl.txt", row.names = FALSE, quote=FALSE)
+  
+```
+
+
+```{r}
+blah <- read.csv("/Users/z/Desktop/stats_101c/kaggle/kag_xgb_mod2xl.txt")
+max(blah[,2])
+
+
+```
